@@ -1,0 +1,10 @@
+# Nothing here is needed by the Vercel build or the deployed functions.
+# supabase/schema.sql is run once by hand in the Supabase SQL editor.
+# scripts/ contains local helpers (QR generator, one-time refresh-token flow).
+supabase/
+scripts/
+.venv/
+venv/
+__pycache__/
+.env
+.env.local

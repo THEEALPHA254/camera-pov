@@ -17,8 +17,8 @@
 
 <script setup>
 const headline = import.meta.env.VITE_EVENT_HEADLINE || 'GRACE IS GRADUATING 🎓'
-const host = import.meta.env.VITE_EVENT_HOST || 'our'
-const eventDate = import.meta.env.VITE_EVENT_DATE || ''
+const host = import.meta.env.VITE_EVENT_HOST || 'Grace'
+const eventDate = import.meta.env.VITE_EVENT_DATE || '7-11-2026'
 const hostPossessive = host.endsWith('s') ? `${host}'` : `${host}'s`
 </script>
 

@@ -32,3 +32,5 @@ Thumbs.db
 scripts/out/
 *.qr.png
 *.qr.svg
+.vercel
+.env*

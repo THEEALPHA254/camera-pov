@@ -8,7 +8,14 @@
       <div class="gold-rule" />
       <p class="lede">Thank you for capturing this moment.</p>
       <RouterLink to="/capture" class="cta" @click.native="reset">Take another 📸</RouterLink>
-      <RouterLink to="/gallery" class="ghost">View the gallery →</RouterLink>
+      <component
+        :is="galleryUrl.startsWith('http') ? 'a' : 'RouterLink'"
+        :href="galleryUrl.startsWith('http') ? galleryUrl : undefined"
+        :to="galleryUrl.startsWith('http') ? undefined : galleryUrl"
+        :target="galleryUrl.startsWith('http') ? '_blank' : undefined"
+        :rel="galleryUrl.startsWith('http') ? 'noopener' : undefined"
+        class="ghost"
+      >View the gallery →</component>
     </div>
   </main>
 </template>
@@ -16,6 +23,11 @@
 <script setup>
 import { onMounted } from 'vue'
 import { clearPending } from '../router.js'
+
+const folderId = __DRIVE_FOLDER_ID__
+const galleryUrl = folderId
+  ? `https://drive.google.com/drive/folders/${folderId}`
+  : '/gallery'
 
 function reset () {
   clearPending()

@@ -9,7 +9,14 @@
         {{ hostPossessive }} graduation memories.
       </p>
       <RouterLink to="/capture" class="cta">📸&nbsp; SNAP IT</RouterLink>
-      <RouterLink to="/gallery" class="ghost">🖼️ &nbsp;View Gallery</RouterLink>
+      <component
+        :is="galleryUrl.startsWith('http') ? 'a' : 'RouterLink'"
+        :href="galleryUrl.startsWith('http') ? galleryUrl : undefined"
+        :to="galleryUrl.startsWith('http') ? undefined : galleryUrl"
+        :target="galleryUrl.startsWith('http') ? '_blank' : undefined"
+        :rel="galleryUrl.startsWith('http') ? 'noopener' : undefined"
+        class="ghost"
+      >🖼️ &nbsp;View Gallery</component>
       <p v-if="eventDate" class="date">{{ eventDate }}</p>
     </div>
   </main>
@@ -20,6 +27,14 @@ const headline = import.meta.env.VITE_EVENT_HEADLINE || 'GRACE IS GRADUATING �
 const host = import.meta.env.VITE_EVENT_HOST || 'Grace'
 const eventDate = import.meta.env.VITE_EVENT_DATE || '7-11-2026'
 const hostPossessive = host.endsWith('s') ? `${host}'` : `${host}'s`
+
+// __DRIVE_FOLDER_ID__ is inlined at build time by vite.config.js from the
+// server-side DRIVE_FOLDER_ID env var. If it's set, "View Gallery" jumps to
+// the shared Drive folder; otherwise falls back to the in-app /gallery page.
+const folderId = __DRIVE_FOLDER_ID__
+const galleryUrl = folderId
+  ? `https://drive.google.com/drive/folders/${folderId}`
+  : '/gallery'
 </script>
 
 <style scoped>

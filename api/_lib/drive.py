@@ -23,6 +23,16 @@ _service = None
 _folders: dict[str, str] = {}
 
 
+def _require(name: str) -> str:
+    val = os.environ.get(name, "")
+    if not val:
+        raise RuntimeError(
+            f"required env var {name} is not set (fill it in .env.local for "
+            "`vercel dev`, or in Project Settings → Environment Variables on Vercel)"
+        )
+    return val
+
+
 def _client():
     global _service
     if _service is not None:
@@ -31,9 +41,9 @@ def _client():
         if _service is None:
             creds = Credentials(
                 token=None,
-                refresh_token=os.environ["GOOGLE_REFRESH_TOKEN"],
-                client_id=os.environ["GOOGLE_CLIENT_ID"],
-                client_secret=os.environ["GOOGLE_CLIENT_SECRET"],
+                refresh_token=_require("GOOGLE_REFRESH_TOKEN"),
+                client_id=_require("GOOGLE_CLIENT_ID"),
+                client_secret=_require("GOOGLE_CLIENT_SECRET"),
                 token_uri=_TOKEN_URI,
                 scopes=_SCOPES,
             )
@@ -46,7 +56,7 @@ def _client():
 def _ensure_subfolder(name: str) -> str:
     if name in _folders:
         return _folders[name]
-    parent = os.environ["DRIVE_FOLDER_ID"]
+    parent = _require("DRIVE_FOLDER_ID")
     svc = _client()
     escaped = name.replace("'", "\\'")
     q = (

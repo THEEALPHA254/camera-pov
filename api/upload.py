@@ -14,6 +14,7 @@ from __future__ import annotations
 import os
 import sys
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from http.server import BaseHTTPRequestHandler
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -42,6 +43,16 @@ def _clip(text: str, limit: int) -> str:
 
 
 class handler(BaseHTTPRequestHandler):
+    def do_GET(self):  # noqa: N802
+        # Warmup ping. The frontend fires this on landing so the Python
+        # runtime cold-starts (importing supabase + google-api-python-client
+        # takes ~10-20s) while the guest is still framing their photo. By
+        # the time they tap SHARE, this same Lambda is warm and the POST
+        # returns in a couple of seconds instead of ~20.
+        self.send_response(204)
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+
     def do_POST(self):  # noqa: N802 (BaseHTTPRequestHandler naming)
         if not event_code_ok(get_query_one(self, "e")):
             return write_error(self, 403, "invalid event code")
@@ -90,17 +101,23 @@ class handler(BaseHTTPRequestHandler):
         photo_bytes = exif.strip(photo[1], photo_mime)
         thumb_bytes = thumb[1]
 
-        # upload to Drive
+        # upload to Drive — do both in parallel; each round trip is ~1.5-3s
+        # so this halves the Drive time on warm requests.
         photo_ext = "jpg" if photo_mime == "image/jpeg" else photo_mime.split("/")[-1]
         thumb_ext = "jpg" if thumb_mime == "image/jpeg" else thumb_mime.split("/")[-1]
         base = uuid.uuid4().hex
         try:
-            photo_id = drive.upload(
-                photo_bytes, f"{base}.{photo_ext}", photo_mime, "photos"
-            )
-            thumb_id = drive.upload(
-                thumb_bytes, f"{base}.thumb.{thumb_ext}", thumb_mime, "thumbs"
-            )
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                photo_fut = pool.submit(
+                    drive.upload,
+                    photo_bytes, f"{base}.{photo_ext}", photo_mime, "photos",
+                )
+                thumb_fut = pool.submit(
+                    drive.upload,
+                    thumb_bytes, f"{base}.thumb.{thumb_ext}", thumb_mime, "thumbs",
+                )
+                photo_id = photo_fut.result()
+                thumb_id = thumb_fut.result()
         except Exception as e:
             return write_error(self, 502, f"drive upload failed: {e}")
 

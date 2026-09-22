@@ -53,6 +53,7 @@ vercel.json           # SPA rewrites + Python runtime
 
    It opens a browser, you sign in as your Drive account, and the refresh token is printed. Copy it as `GOOGLE_REFRESH_TOKEN`.
 6. In your Drive, create a folder (e.g. `Capture the Moment`). Open it and copy the ID from the URL (`drive.google.com/drive/folders/<THIS>`) → `DRIVE_FOLDER_ID`. The app uses the `drive.file` scope, so it can only touch files it creates inside this folder; everything else in your Drive is invisible to it.
+7. **Share the folder** so guests can view it: right-click the folder → **Share** → **General access → "Anyone with the link" → Viewer**. The "View Gallery" button on the landing page opens this folder directly, so if it's still restricted your guests will hit Google's "Request access" screen.
 
 ### 2. Supabase project
 
@@ -74,6 +75,8 @@ python -c "import secrets; print(secrets.token_urlsafe(24))"   # IP_HASH_SALT
 ```
 
 ### 4. Install deps
+
+Requires **Node ≥ 20** and **Python 3.12** (matches what Vercel runs).
 
 ```bash
 # Frontend
@@ -110,7 +113,7 @@ Open <http://localhost:3000/?e=GRACEGRAD> (with your `EVENT_CODE`) and try the f
    | `EVENT_CODE` | Baked into the QR URL; checked on every upload |
    | `SITE_URL` | Only used by `generate_qr.py` |
    | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN` | Drive auth |
-   | `DRIVE_FOLDER_ID` | Parent folder in your Drive |
+   | `DRIVE_FOLDER_ID` | Parent folder in your Drive. Also read at *build time* by `vite.config.js` so the landing page's "View Gallery" button links straight to this folder. |
    | `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` | Supabase |
    | `ADMIN_PASSWORD`, `ADMIN_SESSION_SECRET` | Admin gate |
    | `IP_HASH_SALT` | Rate limiter |
@@ -118,7 +121,10 @@ Open <http://localhost:3000/?e=GRACEGRAD> (with your `EVENT_CODE`) and try the f
 4. Deploy. Vercel will build the frontend, package `api/*.py` as serverless functions, and give you a URL like `capture-the-moment.vercel.app`.
 5. Update `SITE_URL` to that URL and regenerate the QR (below).
 
-**Note on client-side envs.** Landing-page copy that ships to the browser (`VITE_EVENT_*`) is optional. If you want them dynamic, set the `VITE_*` prefixed vars in Vercel; Vite embeds anything with the `VITE_` prefix at build time.
+**Notes on env vars.**
+- **Client-side copy** (`VITE_EVENT_*`) is optional; Vite embeds anything with the `VITE_` prefix at build time. Landing-page copy has sensible fallbacks in `Landing.vue`.
+- **`DRIVE_FOLDER_ID` is special**: it's both a server-side secret (used by the Python functions) *and* inlined into the frontend bundle at build time by `vite.config.js` (via `define`) so "View Gallery" can link to `drive.google.com/drive/folders/<id>`. One env var, both uses. Because it's baked in at build time, changing it in the Vercel dashboard requires a **new deployment** (not just a redeploy of an existing build) to take effect on the frontend.
+- **Vercel scopes**: make sure each var is enabled for both **Production** and **Development** if you plan to use `vercel dev` with cloud values, or **Preview** if you use PR previews.
 
 ---
 
@@ -157,7 +163,11 @@ Change them in `frontend/src/styles/global.css`.
 
 ## Trade-offs, kept small on purpose
 
-- **Vercel Hobby** caps request bodies at 4.5 MB, so the client always resizes to ≤2000 px on the long edge and 0.85 JPEG (target < 2 MB). If a HEIC comes in bigger, `heic2any` runs in the browser before upload.
+- **Vercel Hobby** caps request bodies at 4.5 MB and function duration at 60 s (`vercel.json → functions.maxDuration`). The client always resizes to ≤2000 px on the long edge and 0.85 JPEG (target < 2 MB). If a HEIC comes in from an iPhone, `heic2any` decodes it in the browser before upload.
+- **Cold starts are the enemy.** Importing `supabase` + `google-api-python-client` takes ~10–20 s on the first Lambda invocation. Mitigations already in place:
+  - `main.js` fires a `GET /api/upload` warmup ping when the user lands, so the Python runtime is booting while they're still framing their photo.
+  - `/api/upload` parallelizes the two Drive uploads (photo + thumb) using a `ThreadPoolExecutor` with per-thread Drive services (googleapiclient's httplib2 isn't thread-safe if shared).
+- **Two files per photo** — a client-generated ~400 px thumbnail (fast gallery scrolling) and the 2000 px full size (opened in the lightbox / Drive). Both live in Drive subfolders `photos/` and `thumbs/`.
 - **Storage abstraction** is a single module (`api/_lib/drive.py`). To move to Cloudinary or local disk later, replace that module and the callers keep working.
 - **Rate limit** is a Supabase count-query per upload (max 20/hr per hashed IP). Fine for a graduation; you'd want Redis for anything busier.
-- **CDN caching** trades near-zero Drive egress against slower moderation. Chose 24h; adjust if that's wrong for you.
+- **CDN caching** trades near-zero Drive egress against slower moderation. Chose 24h; adjust `s-maxage` in `api/image/[id].py` if that's wrong for you.

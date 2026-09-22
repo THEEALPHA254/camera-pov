@@ -1,0 +1,51 @@
+:root {
+  --bg: #000;
+  --fg: #fff;
+  --gold: #d4af37;
+  --gold-soft: rgba(212, 175, 55, 0.4);
+  --serif: 'Playfair Display', Georgia, 'Times New Roman', serif;
+  --sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    Roboto, Helvetica, Arial, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body, #app {
+  margin: 0;
+  padding: 0;
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--fg);
+}
+body {
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overscroll-behavior-y: contain;
+}
+button, input, textarea {
+  font-family: inherit;
+  color: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+button { touch-action: manipulation; }
+a { color: inherit; }
+
+/* Reusable ornament */
+.gold-rule {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(212, 175, 55, 0.55),
+    transparent
+  );
+}
+
+/* Slightly larger tap targets */
+@media (max-width: 480px) {
+  button, .cta, a.cta {
+    min-height: 3rem;
+  }
+}

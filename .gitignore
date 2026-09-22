@@ -1,0 +1,34 @@
+# Node
+node_modules/
+dist/
+.vite/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+.pytest_cache/
+
+# Vercel
+.vercel/
+
+# Secrets
+.env
+.env.local
+.env.*.local
+oauth_token.json
+credentials.json
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Generated QR outputs
+scripts/out/
+*.qr.png
+*.qr.svg
